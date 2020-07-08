@@ -3,6 +3,8 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -240,6 +242,11 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 
 		leader = fmt.Sprintf("%s:%s", ep.Subsets[0].Addresses[0].IP, "8081")
+
+		if ep.Annotations == nil {
+			ep.Annotations = make(map[string]string)
+		}
+
 		ep.Annotations["tarantool.io/leader"] = leader
 		if err := r.client.Update(context.TODO(), ep); err != nil {
 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
@@ -332,12 +339,37 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
+	data, err := topologyClient.GetServerStat()
 	for _, sts := range stsList.Items {
 		stsAnnotations := sts.GetAnnotations()
 		weight, _ := stsAnnotations["tarantool.io/replicaset-weight"]
-		// if ok {
-		// 	continue
-		// }
+
+		if weight == "0" {
+			reqLogger.Info("weight is set to 0, checking replicaset buckets for scheduled deletion")
+
+			if err != nil {
+				reqLogger.Error(err, "failed to get server stats")
+			} else {
+				for i := 0; i < len(data.Stats); i++ {
+					if strings.HasPrefix(data.Stats[i].URI, sts.GetName()) {
+						reqLogger.Info("Found statefulset to check for buckets count", "sts.Name", sts.GetName())
+
+						bucketsCount := data.Stats[i].Statistics.BucketsCount
+						if bucketsCount == 0 {
+							reqLogger.Info("replicaset has migrated all of its buckets away, schedule to remove", "sts.Name", sts.GetName())
+
+							stsAnnotations["tarantool.io/scheduledDelete"] = "1"
+							sts.SetAnnotations(stsAnnotations)
+							if err := r.client.Update(context.TODO(), &sts); err != nil {
+								reqLogger.Error(err, "failed to set scheduled deletion annotation")
+							}
+						} else {
+							reqLogger.Info("replicaset still has buckets, retry checking on next run", "sts.Name", sts.GetName(), "buckets", bucketsCount)
+						}
+					}
+				}
+			}
+		}
 
 		for i := 0; i < int(*sts.Spec.Replicas); i++ {
 			pod := &corev1.Pod{}
@@ -360,9 +392,44 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 		}
 
-		if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
+		replicaSetList, err := topologyClient.GetReplicaSetList()
+		if err != nil {
 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 		}
+
+		for i := 0; i < len(replicaSetList.Data); i++ {
+			if replicaSetList.Data[i].UUID == stsAnnotations["tarantool.io/replicaset-uuid"] {
+				reqLogger.Info("found", "sts.Name", sts.GetName())
+
+				intWeight, err := strconv.Atoi(weight)
+				if err != nil {
+					return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+				}
+
+				if intWeight != replicaSetList.Data[i].Weight {
+					reqLogger.Info("weight changed, run update", "newWeight", intWeight, "oldWeight", replicaSetList.Data[i].Weight)
+					if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
+						return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+					}
+				}
+			}
+		}
+
+		// for i := 0; i < len(data.Stats); i++ {
+		// 	if strings.HasPrefix(data.Stats[i].URI, sts.GetName()) {
+		// 		intWeight, err := strconv.Atoi(weight)
+		// 		if err != nil {
+		// 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+		// 		}
+
+		// 		if intWeight != data.Stats[i].Statistics.BucketsCount {
+		// 			reqLogger.Info("Buckets count changed, update replicaset", "sts.Name", sts.GetName(), "intWeight", intWeight, "current", data.Stats[i].Statistics.BucketsCount)
+		// 			if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
+		// 				return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		// if stsAnnotations == nil {
 		// 	stsAnnotations = make(map[string]string)

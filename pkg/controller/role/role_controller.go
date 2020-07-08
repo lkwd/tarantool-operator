@@ -168,6 +168,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			sts.Name = fmt.Sprintf("%s-%d", role.Name, i-1)
 			sts.Namespace = request.Namespace
 			reqLogger.Info("ROLE DOWNSCALE", "will remove", sts.Name)
+
 			if err := r.client.Get(context.TODO(), types.NamespacedName{Namespace: sts.Namespace, Name: sts.Name}, sts); err != nil {
 				if errors.IsNotFound(err) {
 					continue
@@ -175,9 +176,14 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 				return reconcile.Result{}, err
 			}
 
-			if err := r.client.Delete(context.TODO(), sts); err != nil {
-				return reconcile.Result{}, err
+			stsAnnotations := sts.GetAnnotations()
+			if stsAnnotations["tarantool.io/scheduledDelete"] == "1" {
+				reqLogger.Info("statefulset is ready for deletion")
 			}
+
+			// if err := r.client.Delete(context.TODO(), sts); err != nil {
+			// 	return reconcile.Result{}, err
+			// }
 		}
 	}
 
@@ -245,10 +251,9 @@ func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tara
 
 	sts.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{Type: "OnDelete"}
 
-	reqLogger.Info(fmt.Sprintf("Update Strategy: %s", sts.Spec.UpdateStrategy.Type))
+	reqLogger.Info("Update Strategy: %s", sts.Spec.UpdateStrategy.Type)
 
 	for k, v := range role.GetLabels() {
-		reqLogger.Info(fmt.Sprintf("label: key: %s value: %s", k, v))
 		sts.Spec.Template.Labels[k] = v
 	}
 
@@ -267,6 +272,7 @@ func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tara
 	}
 
 	sts.ObjectMeta.Annotations["tarantool.io/isBootstrapped"] = "0"
+	sts.ObjectMeta.Annotations["tarantool.io/replicaset-weight"] = "100"
 
 	sts.Spec.Template.Labels["tarantool.io/replicaset-uuid"] = replicasetUUID.String()
 	sts.Spec.Template.Labels["tarantool.io/vshardGroupName"] = role.GetLabels()["tarantool.io/role"]

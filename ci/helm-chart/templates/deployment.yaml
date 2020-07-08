@@ -15,8 +15,6 @@ spec:
         name: tarantool-operator
     spec:
       serviceAccountName: tarantool-operator
-      imagePullSecrets:
-        - name: ecr
       containers:
         - name: tarantool-operator
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}

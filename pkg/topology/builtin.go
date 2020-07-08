@@ -98,6 +98,23 @@ type ServerStat struct {
 	URI        string     `json:"uri"`
 }
 
+// ReplicasetListResponse .
+type ReplicasetListResponse struct {
+	Data   []*ReplicaSet    `json:"data"`
+	Errors []*ResponseError `json"errors,omitempty"`
+}
+
+// ReplicaSet .
+type ReplicaSet struct {
+	Weight      int      `json:"weight"`
+	VshardGroup string   `json:"vshard_group`
+	Alias       string   `json:"alias"`
+	Status      string   `json:"status"`
+	Roles       []string `json:"roles"`
+	UUID        string   `json:"uuid"`
+	AllRW       bool     `json:"all_rw"`
+}
+
 // Statistics .
 type Statistics struct {
 	ItemsUsedRatio string `json:"items_used_ratio"`
@@ -150,6 +167,18 @@ var getServerStatQuery = `query serverList {
 			items_used_ratio
 		}
 	}
+}`
+
+var getReplicaSetListQuery = `query serverListWithoutStat {
+  replicasetList: replicasets {
+    alias
+    all_rw
+    uuid
+    status
+    roles
+    vshard_group
+    weight
+  }
 }`
 
 // Join comment
@@ -338,6 +367,19 @@ func (s *BuiltInTopologyService) BootstrapVshard() error {
 	}
 
 	return errors.New("unknown error")
+}
+
+// GetReplicaSetList .
+func (s *BuiltInTopologyService) GetReplicaSetList() (ReplicasetListResponse, error) {
+	client := graphql.NewClient(s.serviceHost, graphql.WithHTTPClient(&http.Client{Timeout: time.Duration(time.Second * 5)}))
+	req := graphql.NewRequest(getReplicaSetListQuery)
+
+	resp := ReplicasetListResponse{}
+	if err := client.Run(context.TODO(), req, &resp); err != nil {
+		return resp, err
+	}
+
+	return resp, nil
 }
 
 // IsTopologyDown .

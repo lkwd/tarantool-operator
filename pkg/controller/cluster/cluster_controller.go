@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -338,13 +339,14 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
+	data, err := topologyClient.GetServerStat()
 	for _, sts := range stsList.Items {
 		stsAnnotations := sts.GetAnnotations()
 		weight, _ := stsAnnotations["tarantool.io/replicaset-weight"]
 
 		if weight == "0" {
 			reqLogger.Info("weight is set to 0, checking replicaset buckets for scheduled deletion")
-			data, err := topologyClient.GetServerStat()
+
 			if err != nil {
 				reqLogger.Error(err, "failed to get server stats")
 			} else {
@@ -390,9 +392,44 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 		}
 
-		if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
+		replicaSetList, err := topologyClient.GetReplicaSetList()
+		if err != nil {
 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 		}
+
+		for i := 0; i < len(replicaSetList.Data); i++ {
+			if replicaSetList.Data[i].UUID == stsAnnotations["tarantool.io/replicaset-uuid"] {
+				reqLogger.Info("found", "sts.Name", sts.GetName())
+
+				intWeight, err := strconv.Atoi(weight)
+				if err != nil {
+					return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+				}
+
+				if intWeight != replicaSetList.Data[i].Weight {
+					reqLogger.Info("weight changed, run update", "newWeight", intWeight, "oldWeight", replicaSetList.Data[i].Weight)
+					if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
+						return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+					}
+				}
+			}
+		}
+
+		// for i := 0; i < len(data.Stats); i++ {
+		// 	if strings.HasPrefix(data.Stats[i].URI, sts.GetName()) {
+		// 		intWeight, err := strconv.Atoi(weight)
+		// 		if err != nil {
+		// 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+		// 		}
+
+		// 		if intWeight != data.Stats[i].Statistics.BucketsCount {
+		// 			reqLogger.Info("Buckets count changed, update replicaset", "sts.Name", sts.GetName(), "intWeight", intWeight, "current", data.Stats[i].Statistics.BucketsCount)
+		// 			if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
+		// 				return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+		// 			}
+		// 		}
+		// 	}
+		// }
 
 		// if stsAnnotations == nil {
 		// 	stsAnnotations = make(map[string]string)

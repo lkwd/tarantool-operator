@@ -3,4 +3,5 @@
     tobuild = [
         'tarantool-operator',
         'chat-operator',
+        'presence-operator',
     ]

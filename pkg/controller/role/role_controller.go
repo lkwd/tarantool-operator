@@ -233,9 +233,6 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			}
 		}
 
-		reqLogger.Info("memory", "sts.Name", sts.GetName(), "mem", template.Spec.Template.Spec.Containers[0].Resources.Limits["memory"])
-		reqLogger.Info("memory", "sts.Name", sts.GetName(), "mem", sts.Spec.Template.Spec.Containers[0].Resources.Requests["memory"])
-
 		if template.Spec.Template.Spec.Containers[0].Resources.Limits["memory"] != sts.Spec.Template.Spec.Containers[0].Resources.Limits["memory"] {
 			reqLogger.Info("Updating memory configuration", "sts.Name", sts.GetName())
 			sts.Spec.Template.Spec.Containers[0].Resources.Limits["memory"] = template.Spec.Template.Spec.Containers[0].Resources.Limits["memory"]

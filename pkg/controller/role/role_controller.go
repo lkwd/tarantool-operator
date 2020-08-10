@@ -218,7 +218,7 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 
 	for _, sts := range stsList.Items {
 		if template.Spec.Replicas != sts.Spec.Replicas {
-			reqLogger.Info("Updating replicas count")
+			reqLogger.Info("Updating replicas count", "sts.Name", sts.GetName())
 			sts.Spec.Replicas = template.Spec.Replicas
 			if err := r.client.Update(context.TODO(), &sts); err != nil {
 				return reconcile.Result{}, err
@@ -226,8 +226,42 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 		}
 
 		if template.Spec.Template.Spec.Containers[0].Image != sts.Spec.Template.Spec.Containers[0].Image {
-			reqLogger.Info("Updating container image")
+			reqLogger.Info("Updating container image", "sts.Name", sts.GetName())
 			sts.Spec.Template.Spec.Containers[0].Image = template.Spec.Template.Spec.Containers[0].Image
+			if err := r.client.Update(context.TODO(), &sts); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+
+		reqLogger.Info("memory", "sts.Name", sts.GetName(), "mem", template.Spec.Template.Spec.Containers[0].Resources.Limits["memory"])
+		reqLogger.Info("memory", "sts.Name", sts.GetName(), "mem", sts.Spec.Template.Spec.Containers[0].Resources.Requests["memory"])
+
+		if template.Spec.Template.Spec.Containers[0].Resources.Limits["memory"] != sts.Spec.Template.Spec.Containers[0].Resources.Limits["memory"] {
+			reqLogger.Info("Updating memory configuration", "sts.Name", sts.GetName())
+			sts.Spec.Template.Spec.Containers[0].Resources.Limits["memory"] = template.Spec.Template.Spec.Containers[0].Resources.Limits["memory"]
+			sts.Spec.Template.Spec.Containers[0].Resources.Requests["memory"] = template.Spec.Template.Spec.Containers[0].Resources.Requests["memory"]
+
+			// When we update pod resources, we also need to upate the environment variable
+			for _, tempVar := range template.Spec.Template.Spec.Containers[0].Env {
+				if tempVar.Name == "TARANTOOL_MEMTX_MEMORY" {
+					for iter, variable := range sts.Spec.Template.Spec.Containers[0].Env {
+						if variable.Name == "TARANTOOL_MEMTX_MEMORY" {
+							sts.Spec.Template.Spec.Containers[0].Env[iter].Value = tempVar.Value
+						}
+					}
+				}
+			}
+
+			if err := r.client.Update(context.TODO(), &sts); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+
+		if template.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"] != sts.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"] {
+			reqLogger.Info("Updating cpu configuration", "sts.Name", sts.GetName())
+			sts.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"] = template.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"]
+			sts.Spec.Template.Spec.Containers[0].Resources.Requests["cpu"] = template.Spec.Template.Spec.Containers[0].Resources.Requests["cpu"]
+
 			if err := r.client.Update(context.TODO(), &sts); err != nil {
 				return reconcile.Result{}, err
 			}

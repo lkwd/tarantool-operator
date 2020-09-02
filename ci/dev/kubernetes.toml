@@ -4,4 +4,5 @@
         'tarantool-operator',
         'chat-operator',
         'presence-operator',
+        'notifylocal-operator',
     ]

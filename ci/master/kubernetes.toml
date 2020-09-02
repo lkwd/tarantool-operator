@@ -2,5 +2,6 @@
 [packages]
     tobuild = [
         'tarantool-operator',
+        'presence-operator',
     ]
 

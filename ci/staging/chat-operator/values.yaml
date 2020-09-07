@@ -9,4 +9,4 @@ image:
   tag: null
   pullPolicy: Always
 
-createCRDs: true
+createCRDs: false

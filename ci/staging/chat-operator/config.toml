@@ -2,7 +2,7 @@
 dockerfile = 'build/Dockerfile'
 docker_build_dir = '.'
 eks_cluster = 'eks-staging'
-namespace = 'userscripting'
+namespace = 'chat'
 app_name = 'tarantool-operator'
 
 regions = [

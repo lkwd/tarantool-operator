@@ -3,6 +3,7 @@ package role
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	goerrors "errors"
 
@@ -116,13 +117,7 @@ type ReconcileRole struct {
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a Role object and makes changes based on the state read
-// and what is in the Role.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+// Reconcile .
 func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Role")
@@ -258,6 +253,15 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			reqLogger.Info("Updating cpu configuration", "sts.Name", sts.GetName())
 			sts.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"] = template.Spec.Template.Spec.Containers[0].Resources.Limits["cpu"]
 			sts.Spec.Template.Spec.Containers[0].Resources.Requests["cpu"] = template.Spec.Template.Spec.Containers[0].Resources.Requests["cpu"]
+
+			if err := r.client.Update(context.TODO(), &sts); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+
+		if !reflect.DeepEqual(template.Spec.Template.Spec.Containers[0].Env, sts.Spec.Template.Spec.Containers[0].Env) {
+			reqLogger.Info("environment lists do not match, do an update")
+			sts.Spec.Template.Spec.Containers[0].Env = template.Spec.Template.Spec.Containers[0].Env
 
 			if err := r.client.Update(context.TODO(), &sts); err != nil {
 				return reconcile.Result{}, err

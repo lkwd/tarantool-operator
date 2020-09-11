@@ -37,4 +37,3 @@ RoleConfig:
     MemtxMemoryMB: 256
     RolesToAssign:
       - storage
-      - vshard.storage

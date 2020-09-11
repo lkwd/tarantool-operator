@@ -170,6 +170,7 @@ var getServerStatQuery = `query serverList {
 }`
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 var getReplicaSetListQuery = `query serverListWithoutStat {
   replicasetList: replicasets {
     alias
@@ -189,6 +190,8 @@ var statefulFailoverMutation = `mutation changeFailover($mode: String!, $state_p
     }
   }`
 =======
+=======
+>>>>>>> 70df82f... cartridge roles: read roles from annotations, fallback to labels
 // GetRoles comment
 func GetRoles(pod *corev1.Pod) ([]string, error) {
 	thisPodLabels := pod.GetLabels()
@@ -224,7 +227,6 @@ func GetRoles(pod *corev1.Pod) ([]string, error) {
 
 	return nil, errors.New("failed to parse roles from annotations")
 }
->>>>>>> 70df82f... cartridge roles: read roles from annotations, fallback to labels
 
 // Join comment
 func (s *BuiltInTopologyService) Join(pod *corev1.Pod) error {

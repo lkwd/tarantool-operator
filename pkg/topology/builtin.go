@@ -169,8 +169,6 @@ var getServerStatQuery = `query serverList {
 	}
 }`
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 var getReplicaSetListQuery = `query serverListWithoutStat {
   replicasetList: replicasets {
     alias
@@ -189,9 +187,7 @@ var statefulFailoverMutation = `mutation changeFailover($mode: String!, $state_p
           mode
     }
   }`
-=======
-=======
->>>>>>> 70df82f... cartridge roles: read roles from annotations, fallback to labels
+
 // GetRoles comment
 func GetRoles(pod *corev1.Pod) ([]string, error) {
 	thisPodLabels := pod.GetLabels()

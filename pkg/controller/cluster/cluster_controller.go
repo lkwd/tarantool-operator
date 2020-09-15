@@ -415,25 +415,25 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 		}
 
-		// for i := 0; i < len(data.Stats); i++ {
-		// 	if strings.HasPrefix(data.Stats[i].URI, sts.GetName()) {
-		// 		intWeight, err := strconv.Atoi(weight)
-		// 		if err != nil {
-		// 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
-		// 		}
+		for i := 0; i < len(data.Stats); i++ {
+			if strings.HasPrefix(data.Stats[i].URI, sts.GetName()) {
+				intWeight, err := strconv.Atoi(weight)
+				if err != nil {
+					return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+				}
 
-		// 		if intWeight != data.Stats[i].Statistics.BucketsCount {
-		// 			reqLogger.Info("Buckets count changed, update replicaset", "sts.Name", sts.GetName(), "intWeight", intWeight, "current", data.Stats[i].Statistics.BucketsCount)
-		// 			if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
-		// 				return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
-		// 			}
-		// 		}
-		// 	}
-		// }
+				if intWeight != data.Stats[i].Statistics.BucketsCount {
+					reqLogger.Info("Buckets count changed, update replicaset", "sts.Name", sts.GetName(), "intWeight", intWeight, "current", data.Stats[i].Statistics.BucketsCount)
+					if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
+						return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+					}
+				}
+			}
+		}
 
-		// if stsAnnotations == nil {
-		// 	stsAnnotations = make(map[string]string)
-		// }
+		if stsAnnotations == nil {
+			stsAnnotations = make(map[string]string)
+		}
 
 		// stsAnnotations["tarantool.io/replicaset-weight"] = "1"
 		// sts.SetAnnotations(stsAnnotations)

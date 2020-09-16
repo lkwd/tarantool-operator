@@ -182,11 +182,12 @@ var getReplicaSetListQuery = `query serverListWithoutStat {
 }`
 
 var statefulFailoverMutation = `mutation changeFailover($mode: String!, $state_provider: String, $etcd2_params: FailoverStateProviderCfgInputEtcd2, $tarantool_params: FailoverStateProviderCfgInputTarantool) {
-      cluster {
-        failover_params(mode: $mode, state_provider: $state_provider, etcd2_params: $etcd2_params, tarantool_params: $tarantool_params) {
-          mode
-    }
-  }`
+	cluster {
+		failover_params(mode: $mode, state_provider: $state_provider, etcd2_params: $etcd2_params, tarantool_params: $tarantool_params) {
+			mode
+		}
+	}
+}`
 
 // GetRoles comment
 func GetRoles(pod *corev1.Pod) ([]string, error) {
@@ -312,7 +313,6 @@ func (s *BuiltInTopologyService) SetTarantoolStatefulFailover(enabled bool, stat
 	client := graphql.NewClient(s.serviceHost, graphql.WithHTTPClient(&http.Client{Timeout: time.Duration(time.Second * 5)}))
 	req := graphql.NewRequest(statefulFailoverMutation)
 
-	req.Var("enabled", enabled)
 	req.Var("mode", "stateful")
 	req.Var("state_provider", "tarantool")
 	req.Var("etcd2_params", nil)

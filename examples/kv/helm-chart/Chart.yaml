@@ -1,5 +1,5 @@
 apiVersion: v1
 appVersion: "1.0"
 description: A Helm chart for tarantool
-name: cartridge
-version: 0.0.5
+name: tarantool
+version: 1.3.0

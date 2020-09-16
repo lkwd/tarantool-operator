@@ -1,4 +1,4 @@
-FROM tarantool/tarantool:1.x-centos7
+FROM tarantool/tarantool:2.x-centos7
 
 # Tarantool binary protocol port
 EXPOSE 3301

@@ -1,0 +1,88 @@
+---
+{{ if ($.Values.TarantoolConfig.EnableBackups) }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tarantool-backups
+  namespace: {{ .Values.namespace }}
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tarantool-backups
+  namespace: {{ .Values.namespace }}
+subjects:
+- kind: ServiceAccount
+  name: tarantool-backups
+roleRef:
+  kind: Role
+  name: tarantool-backups
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
+  name: tarantool-backups
+  namespace: {{ .Values.namespace }}
+rules:
+- apiGroups:
+    - ""
+  resources:
+    - pods/exec
+  verbs:
+    - create
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - configmaps
+  - secrets
+  - endpoints
+  verbs:
+  - '*'
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
+  - endpoints
+  verbs:
+  - '*'
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: {{ $.Values.ClusterName }}-backup
+  namespace: {{ $.Values.namespace }}
+spec:
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: tarantool-backups
+          containers:
+          - name: backups
+            image: "{{ $.Values.BackupImage.repository }}:{{ $.Values.BackupImage.tag }}"
+            env:
+              - name: NAMESPACE
+                value: {{ $.Values.namespace }}
+              - name: TT_USER
+                value: admin
+              - name: TT_PASS
+                valueFrom:
+                  configMapKeyRef:
+                    name: cluster-config
+                    key: cluster.cookie
+              - name: CLUSTER_NAME
+                value: "eks-{{ $.Values.ClusterEnv }}"
+              - name: REGION_NAME
+                value: eu-west-1
+          restartPolicy: OnFailure
+---
+{{ end }}

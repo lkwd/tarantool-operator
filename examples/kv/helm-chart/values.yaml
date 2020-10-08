@@ -3,14 +3,26 @@
 # Declare variables to be passed into your templates.
 
 ClusterEnv: dev
-ClusterName: examples-kv-cluster
+ClusterName: example
 
-namespace: tarantool
+namespace: example
 
 image:
-  repository: tarantool/tarantool-operator-examples-kv
-  tag: 0.0.2
+  repository: 150395319802.dkr.ecr.eu-west-1.amazonaws.com/tt-kubernetes
+  tag: examples-kv-1
   pullPolicy: IfNotPresent
+
+BackupImage:
+  repository: 150395319802.dkr.ecr.eu-west-1.amazonaws.com/tarantool-backups
+  tag: dev-latest
+
+TarantoolConfig:
+  WorkingDir: /opt/tarantool
+  StorageDir: /data
+  EnableBackups: false
+  UseStateboardFailover: true
+  UseConsulFailover: false
+  UseJSONlogging: true
 
 service:
   type: ClusterIP
@@ -20,19 +32,23 @@ Prometheus:
   port: 8081
   path: /metrics
 
+AllShardGroups: []
+
 RoleConfig:
-  - RoleName: routers
-    ReplicaCount: 1
+  - RoleName: api
+    ReplicaCount: 3
     ReplicaSetCount: 1
     DiskSize: 1Gi
     CPUallocation: 0.25
     MemtxMemoryMB: 256
-    RolesToAssign: router
+    RolesToAssign:
+      - router
 
   - RoleName: storage
-    ReplicaCount: 2
+    ReplicaCount: 3
     ReplicaSetCount: 1
     DiskSize: 1Gi
     CPUallocation: 0.25
     MemtxMemoryMB: 256
-    RolesToAssign: storage
+    RolesToAssign:
+      - storage

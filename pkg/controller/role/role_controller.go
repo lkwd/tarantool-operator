@@ -3,6 +3,7 @@ package role
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	goerrors "errors"
 
@@ -116,13 +117,7 @@ type ReconcileRole struct {
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a Role object and makes changes based on the state read
-// and what is in the Role.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+// Reconcile .
 func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Role")
@@ -263,6 +258,15 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 				return reconcile.Result{}, err
 			}
 		}
+
+		if !reflect.DeepEqual(template.Spec.Template.Spec.Containers[0].Env, sts.Spec.Template.Spec.Containers[0].Env) {
+			reqLogger.Info("environment lists do not match, do an update")
+			sts.Spec.Template.Spec.Containers[0].Env = template.Spec.Template.Spec.Containers[0].Env
+
+			if err := r.client.Update(context.TODO(), &sts); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
 	}
 
 	return reconcile.Result{}, nil
@@ -296,7 +300,12 @@ func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tara
 	sts.Spec.ServiceName = role.GetAnnotations()["tarantool.io/cluster-id"]
 	replicasetUUID := uuid.NewSHA1(space, []byte(sts.GetName()))
 	sts.ObjectMeta.Labels["tarantool.io/replicaset-uuid"] = replicasetUUID.String()
-	sts.ObjectMeta.Labels["tarantool.io/vshardGroupName"] = role.GetLabels()["tarantool.io/role"]
+
+	if groupName, ok := role.GetLabels()["tarantool.io/vshardGroupName"]; ok {
+		sts.ObjectMeta.Labels["tarantool.io/vshardGroupName"] = groupName
+	} else {
+		sts.ObjectMeta.Labels["tarantool.io/vshardGroupName"] = role.GetLabels()["tarantool.io/role"]
+	}
 
 	if sts.ObjectMeta.Annotations == nil {
 		sts.ObjectMeta.Annotations = make(map[string]string)
@@ -304,6 +313,7 @@ func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tara
 
 	sts.ObjectMeta.Annotations["tarantool.io/isBootstrapped"] = "0"
 	sts.ObjectMeta.Annotations["tarantool.io/replicaset-weight"] = "100"
+	sts.ObjectMeta.Annotations["tarantool.io/failoverMode"] = role.GetAnnotations()["tarantool.io/failoverMode"]
 
 	sts.Spec.Template.Labels["tarantool.io/replicaset-uuid"] = replicasetUUID.String()
 	sts.Spec.Template.Labels["tarantool.io/vshardGroupName"] = role.GetLabels()["tarantool.io/role"]

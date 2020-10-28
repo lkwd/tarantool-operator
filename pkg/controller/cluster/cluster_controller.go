@@ -415,31 +415,9 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 		}
 
-		// for i := 0; i < len(data.Stats); i++ {
-		// 	if strings.HasPrefix(data.Stats[i].URI, sts.GetName()) {
-		// 		intWeight, err := strconv.Atoi(weight)
-		// 		if err != nil {
-		// 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
-		// 		}
-
-		// 		if intWeight != data.Stats[i].Statistics.BucketsCount {
-		// 			reqLogger.Info("Buckets count changed, update replicaset", "sts.Name", sts.GetName(), "intWeight", intWeight, "current", data.Stats[i].Statistics.BucketsCount)
-		// 			if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
-		// 				return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
-		// 			}
-		// 		}
-		// 	}
-		// }
-
-		// if stsAnnotations == nil {
-		// 	stsAnnotations = make(map[string]string)
-		// }
-
-		// stsAnnotations["tarantool.io/replicaset-weight"] = "1"
-		// sts.SetAnnotations(stsAnnotations)
-		// if err := r.client.Update(context.TODO(), &sts); err != nil {
-		// 	return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
-		// }
+		if stsAnnotations == nil {
+			stsAnnotations = make(map[string]string)
+		}
 	}
 
 	for _, sts := range stsList.Items {
@@ -472,11 +450,60 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		if stsAnnotations["tarantool.io/failoverEnabled"] == "1" {
 			reqLogger.Info("failover is enabled, not retrying")
 		} else {
-			if err := topologyClient.SetFailover(true); err != nil {
-				reqLogger.Error(err, "failed to enable cluster failover")
-			} else {
-				reqLogger.Info("enabled failover")
+			var hasBeenEnabled = false
+			var failoverMode = stsAnnotations["tarantool.io/failoverMode"]
+			reqLogger.Info("found failover mode", "mode", failoverMode)
+			if failoverMode == "eventual" {
+				reqLogger.Info("configuring eventual failover")
+				if err := topologyClient.SetEventualFailover(true); err != nil {
+					reqLogger.Error(err, "failed to enable cluster failover")
+				} else {
+					reqLogger.Info("enabled failover")
+					hasBeenEnabled = true
+				}
+			} else if failoverMode == "stateful-tarantool" {
+				reqLogger.Info("configuring stateful failover with tarantool backend")
 
+				configmap := &corev1.ConfigMap{}
+				name := types.NamespacedName{
+					Namespace: request.Namespace,
+					Name:      "cluster-config",
+				}
+
+				if err := r.client.Get(context.TODO(), name, configmap); err != nil {
+					if errors.IsNotFound(err) {
+						return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+					}
+
+					return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+				}
+
+				// Defaults for config
+				var stateboardURI = "stateboard:3301"
+				var stateboardPassword = "password"
+
+				if val, ok := configmap.Data["stateboardUri"]; ok {
+					stateboardURI = val
+				}
+				if val, ok := configmap.Data["stateboardPassword"]; ok {
+					stateboardPassword = val
+				}
+
+				if err := topologyClient.SetTarantoolStatefulFailover(true, stateboardURI, stateboardPassword); err != nil {
+					reqLogger.Error(err, "failed to enable stateful tarantool failover")
+				} else {
+					hasBeenEnabled = true
+				}
+
+			} else if failoverMode == "stateful-consul" {
+				reqLogger.Info("configuring stateful failover with consul backend")
+				// blyat: Implement this when available in cartridge
+
+			} else {
+				reqLogger.Info("could not determine which failover mode to enable")
+			}
+
+			if hasBeenEnabled {
 				stsAnnotations["tarantool.io/failoverEnabled"] = "1"
 				sts.SetAnnotations(stsAnnotations)
 				if err := r.client.Update(context.TODO(), &sts); err != nil {

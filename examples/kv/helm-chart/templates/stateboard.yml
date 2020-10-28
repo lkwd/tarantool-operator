@@ -1,0 +1,58 @@
+{{ if $.Values.TarantoolConfig.UseStateboardFailover }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "stateboard-{{ .Values.ClusterName }}"
+spec:
+  storageClassName: gp2
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "stateboard"
+spec:
+  selector:
+    matchLabels:
+      run: "stateboard-{{ .Values.ClusterName }}"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: "stateboard-{{ .Values.ClusterName }}"
+    spec:
+      volumes:
+      - name: "stateboard-{{ .Values.ClusterName }}"
+        persistentVolumeClaim:
+          claimName: "stateboard-{{ .Values.ClusterName }}"
+      containers:
+      - name: stateboard
+        imagePullPolicy: Always
+        image: 150395319802.dkr.ecr.eu-west-1.amazonaws.com/tarantool-stateboard:1599828930-dev
+        ports:
+        - containerPort: 3301
+          protocol: TCP
+          name: app
+        volumeMounts:
+          - mountPath: /data
+            name: "stateboard-{{ .Values.ClusterName }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "stateboard"
+  labels:
+    run: "stateboard-{{ .Values.ClusterName }}"
+spec:
+  ports:
+  - port: 3301
+    protocol: TCP
+  selector:
+    run: "stateboard-{{ .Values.ClusterName }}"
+---
+{{ end }}

@@ -181,6 +181,50 @@ var getReplicaSetListQuery = `query serverListWithoutStat {
   }
 }`
 
+var statefulFailoverMutation = `mutation changeFailover($mode: String!, $state_provider: String, $etcd2_params: FailoverStateProviderCfgInputEtcd2, $tarantool_params: FailoverStateProviderCfgInputTarantool) {
+	cluster {
+		failover_params(mode: $mode, state_provider: $state_provider, etcd2_params: $etcd2_params, tarantool_params: $tarantool_params) {
+			mode
+		}
+	}
+}`
+
+// GetRoles comment
+func GetRoles(pod *corev1.Pod) ([]string, error) {
+	thisPodLabels := pod.GetLabels()
+	thisPodAnnotations := pod.GetAnnotations()
+
+	rolesFromAnnotations, ok := thisPodAnnotations["tarantool.io/rolesToAssign"]
+	if !ok {
+		rolesFromLabels, ok := thisPodLabels["tarantool.io/rolesToAssign"]
+		if !ok {
+			return nil, errors.New("role undefined")
+		}
+
+		roles := strings.Split(rolesFromLabels, ".")
+		log.Info("roles", "roles", roles)
+
+		return roles, nil
+	}
+
+	var singleRole string
+	var roleArray []string
+
+	err := json.Unmarshal([]byte(rolesFromAnnotations), &singleRole)
+	if err == nil {
+		log.Info("roles", "roles", singleRole)
+		return []string{singleRole}, nil
+	}
+
+	err = json.Unmarshal([]byte(rolesFromAnnotations), &roleArray)
+	if err == nil {
+		log.Info("roles", "roles", roleArray)
+		return roleArray, nil
+	}
+
+	return nil, errors.New("failed to parse roles from annotations")
+}
+
 // Join comment
 func (s *BuiltInTopologyService) Join(pod *corev1.Pod) error {
 
@@ -200,10 +244,11 @@ func (s *BuiltInTopologyService) Join(pod *corev1.Pod) error {
 		return errors.New("instance uuid empty")
 	}
 
-	role, ok := thisPodLabels["tarantool.io/rolesToAssign"]
-	if !ok {
-		return errors.New("role undefined")
+	roles, err := GetRoles(pod)
+	if err != nil {
+		return err
 	}
+	log.Info("roles", "roles", roles)
 
 	vshardGroup := "default"
 	useVshardGroups, ok := thisPodLabels["tarantool.io/useVshardGroups"]
@@ -217,10 +262,6 @@ func (s *BuiltInTopologyService) Join(pod *corev1.Pod) error {
 			return errors.New("vshard_group undefined")
 		}
 	}
-
-	roles := strings.Split(role, ".")
-
-	log.Info("roles", "roles", roles)
 
 	client := graphql.NewClient(s.serviceHost, graphql.WithHTTPClient(&http.Client{Timeout: time.Duration(time.Second * 5)}))
 	req := graphql.NewRequest(joinMutation)
@@ -251,8 +292,8 @@ func (s *BuiltInTopologyService) Join(pod *corev1.Pod) error {
 	return errors.New("something really bad happened")
 }
 
-// SetFailover enables cluster failover
-func (s *BuiltInTopologyService) SetFailover(enabled bool) error {
+// SetEventualFailover enables cluster failover
+func (s *BuiltInTopologyService) SetEventualFailover(enabled bool) error {
 	client := graphql.NewClient(s.serviceHost, graphql.WithHTTPClient(&http.Client{Timeout: time.Duration(time.Second * 5)}))
 	req := graphql.NewRequest(`mutation changeFailover($enabled: Boolean!) { cluster { failover(enabled: $enabled) }}`)
 
@@ -265,6 +306,41 @@ func (s *BuiltInTopologyService) SetFailover(enabled bool) error {
 	}
 
 	return nil
+}
+
+// SetTarantoolStatefulFailover .
+func (s *BuiltInTopologyService) SetTarantoolStatefulFailover(enabled bool, stateboardURI string, stateboardPassword string) error {
+	client := graphql.NewClient(s.serviceHost, graphql.WithHTTPClient(&http.Client{Timeout: time.Duration(time.Second * 5)}))
+	req := graphql.NewRequest(statefulFailoverMutation)
+
+	req.Var("mode", "stateful")
+	req.Var("state_provider", "tarantool")
+	req.Var("etcd2_params", nil)
+
+	conf := map[string]string{
+		"password": stateboardPassword,
+		"uri":      stateboardURI,
+	}
+
+	req.Var("tarantool_params", conf)
+
+	resp := &FailoverData{}
+	if err := client.Run(context.TODO(), req, resp); err != nil {
+		log.Error(err, "failoverError")
+		return errors.New("failed to enable tarantool stateful cluster failover")
+	}
+
+	return nil
+}
+
+// SetConsulStatefulFailover .
+func (s *BuiltInTopologyService) SetConsulStatefulFailover(enabled bool, consulHost string, consulToken string) error {
+
+	err := errors.New("SetConsulStatefulFailover is not yet implemented")
+
+	log.Error(err, "SetConsulStatefulFailover: this function is not yet implemented")
+
+	return err
 }
 
 // Expel removes an instance from the replicaset

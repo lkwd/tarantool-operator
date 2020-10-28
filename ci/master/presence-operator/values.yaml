@@ -8,3 +8,5 @@ image:
   repository: null
   tag: null
   pullPolicy: Always
+
+createCRDs: true

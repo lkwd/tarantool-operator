@@ -327,7 +327,18 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				}
 
 				reqLogger.Error(err, "Join error")
+
+				if strings.Contains(err.Error(), "no route to host") {
+					reqLogger.Info("no route to leader, IP of the pod could have changed, re-elect leader")
+					delete(ep.Annotations, "tarantool.io/leader")
+
+					if err := r.client.Update(context.TODO(), ep); err != nil {
+						return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+					}
+				}
+
 				return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+
 			} else {
 				tarantool.MarkJoined(pod)
 				if err := r.client.Update(context.TODO(), pod); err != nil {

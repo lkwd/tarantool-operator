@@ -77,7 +77,7 @@ tags
 ### MacOS specific ###
 .DS_Store
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
-kubeconfig.yaml
+kubeconfig.yaml*
 ./deployment.yaml
 ./tarantool-operator
 helm_values.yaml

@@ -7,6 +7,7 @@ require (
 	github.com/machinebox/graphql v0.2.2
 	github.com/matryer/is v1.2.0 // indirect
 	github.com/operator-framework/operator-sdk v0.9.1-0.20190802152409-7104d8d7d0e8
+	github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829
 	github.com/spf13/pflag v1.0.3
 	k8s.io/api v0.0.0-20190612125737-db0771252981
 	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
@@ -20,14 +21,14 @@ require (
 
 // Pinned to kubernetes-1.13.1
 replace (
-	k8s.io/api => k8s.io/api v0.0.0-20181213150558-05914d821849
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20181213153335-0fe22c71c476
-	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20181213151034-8d9ed539ba31
 
 	// autoneg is a dependency of early versions of operator-sdk (pre v1.0).
 	// it is no longer hosted on bitbucket.org, so the files are checked in locally and replaced here.
 	bitbucket.org/ww/goautoneg => ./vendor/bitbucket.org/ww/autoneg
+	k8s.io/api => k8s.io/api v0.0.0-20181213150558-05914d821849
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20181213153335-0fe22c71c476
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20181213151034-8d9ed539ba31
 )
 
 replace (

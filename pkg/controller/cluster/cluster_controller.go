@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	tarantoolv1alpha1 "github.com/tarantool/tarantool-operator/pkg/apis/tarantool/v1alpha1"
 	"github.com/tarantool/tarantool-operator/pkg/tarantool"
 	"github.com/tarantool/tarantool-operator/pkg/topology"
@@ -22,13 +23,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var log = logf.Log.WithName("controller_cluster")
 var space = uuid.MustParse("73692FF6-EB42-46C2-92B6-65C45191368D")
+
+var metricsGauges = make(map[string]prometheus.Gauge)
 
 // ResponseError .
 type ResponseError struct {
@@ -408,8 +414,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 		}
 
-		for i := 0; i < len(replicaSetList.Data); i++ {
-			if replicaSetList.Data[i].UUID == stsAnnotations["tarantool.io/replicaset-uuid"] {
+		for i := 0; i < len(replicaSetList.Data.ReplicaSets); i++ {
+			if replicaSetList.Data.ReplicaSets[i].UUID == stsAnnotations["tarantool.io/replicaset-uuid"] {
 				reqLogger.Info("found", "sts.Name", sts.GetName())
 
 				intWeight, err := strconv.Atoi(weight)
@@ -417,8 +423,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 					return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 				}
 
-				if intWeight != replicaSetList.Data[i].Weight {
-					reqLogger.Info("weight changed, run update", "newWeight", intWeight, "oldWeight", replicaSetList.Data[i].Weight)
+				if intWeight != replicaSetList.Data.ReplicaSets[i].Weight {
+					reqLogger.Info("weight changed, run update", "newWeight", intWeight, "oldWeight", replicaSetList.Data.ReplicaSets[i].Weight)
 					if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
 						return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 					}
@@ -429,6 +435,36 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		if stsAnnotations == nil {
 			stsAnnotations = make(map[string]string)
 		}
+	}
+
+	replicaSetList, err := topologyClient.GetReplicaSetList()
+	for i := 0; i < len(replicaSetList.Data.Servers); i++ {
+		reqLogger.Info("server", "alias", replicaSetList.Data.Servers[i].Alias, "status", replicaSetList.Data.Servers[i].Status)
+
+		if _, ok := metricsGauges[replicaSetList.Data.Servers[i].Alias]; !ok {
+			namespace, err := k8sutil.GetWatchNamespace()
+			if err != nil {
+				reqLogger.Error(err, "failed to get watch namespace")
+			}
+			reqLogger.Info("gauge does not exist, create it", "instance", replicaSetList.Data.Servers[i].Alias)
+			metricsGauges[replicaSetList.Data.Servers[i].Alias] = prometheus.NewGauge(prometheus.GaugeOpts{
+				Name: "cartridge_up",
+				Help: "cartridge up status",
+				ConstLabels: prometheus.Labels{
+					"namespace": namespace,
+					"instance":  replicaSetList.Data.Servers[i].Alias,
+				},
+			})
+
+			metrics.Registry.MustRegister(metricsGauges[replicaSetList.Data.Servers[i].Alias])
+		}
+
+		var status float64 = 0
+		if replicaSetList.Data.Servers[i].Status == "healthy" {
+			status = 1
+		}
+
+		metricsGauges[replicaSetList.Data.Servers[i].Alias].Set(status)
 	}
 
 	for _, sts := range stsList.Items {

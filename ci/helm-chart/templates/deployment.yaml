@@ -18,6 +18,10 @@ spec:
     metadata:
       labels:
         name: tarantool-operator
+      annotations:
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8383"
+        prometheus.io/scrape: "true"
     spec:
       serviceAccountName: tarantool-operator
       containers:

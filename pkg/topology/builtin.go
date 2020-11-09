@@ -98,10 +98,26 @@ type ServerStat struct {
 	URI        string     `json:"uri"`
 }
 
+// Statistics .
+type Statistics struct {
+	ItemsUsedRatio string `json:"items_used_ratio"`
+	ArenaUsedRatio string `json:"arena_used_ratio"`
+	QuotaSize      int    `json:"quotaSize"`
+	ArenaUsed      int    `json:"arenaUsed"`
+	QuotaUsedRatio string `json:"quota_used_ratio"`
+	BucketsCount   int    `json:"bucketsCount"`
+}
+
 // ReplicasetListResponse .
 type ReplicasetListResponse struct {
-	Data   []*ReplicaSet    `json:"data"`
+	Data   ReplicaSetData   `json:"data"`
 	Errors []*ResponseError `json"errors,omitempty"`
+}
+
+// ReplicaSetData .
+type ReplicaSetData struct {
+	ReplicaSets []*ReplicaSet `json:"replicasetList"`
+	Servers     []*Server     `json:"serverList"`
 }
 
 // ReplicaSet .
@@ -115,14 +131,13 @@ type ReplicaSet struct {
 	AllRW       bool     `json:"all_rw"`
 }
 
-// Statistics .
-type Statistics struct {
-	ItemsUsedRatio string `json:"items_used_ratio"`
-	ArenaUsedRatio string `json:"arena_used_ratio"`
-	QuotaSize      int    `json:"quotaSize"`
-	ArenaUsed      int    `json:"arenaUsed"`
-	QuotaUsedRatio string `json:"quota_used_ratio"`
-	BucketsCount   int    `json:"bucketsCount"`
+// Server .
+type Server struct {
+	UUID    string `json:"uuid"`
+	Alias   string `json:"alias"`
+	URI     string `json:"uri"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
 }
 
 var log = logf.Log.WithName("topology")
@@ -170,15 +185,22 @@ var getServerStatQuery = `query serverList {
 }`
 
 var getReplicaSetListQuery = `query serverListWithoutStat {
-  replicasetList: replicasets {
-    alias
-    all_rw
-    uuid
-    status
-    roles
-    vshard_group
-    weight
-  }
+	serverList: servers {
+		uuid
+		alias
+		uri
+		status
+		message
+	}
+	replicasetList: replicasets {
+		alias
+		all_rw
+		uuid
+		status
+		roles
+		vshard_group
+		weight
+	}
 }`
 
 var statefulFailoverMutation = `mutation changeFailover($mode: String!, $state_provider: String, $etcd2_params: FailoverStateProviderCfgInputEtcd2, $tarantool_params: FailoverStateProviderCfgInputTarantool) {
@@ -447,11 +469,18 @@ func (s *BuiltInTopologyService) BootstrapVshard() error {
 
 // GetReplicaSetList .
 func (s *BuiltInTopologyService) GetReplicaSetList() (ReplicasetListResponse, error) {
-	client := graphql.NewClient(s.serviceHost, graphql.WithHTTPClient(&http.Client{Timeout: time.Duration(time.Second * 5)}))
-	req := graphql.NewRequest(getReplicaSetListQuery)
-
 	resp := ReplicasetListResponse{}
-	if err := client.Run(context.TODO(), req, &resp); err != nil {
+
+	req := fmt.Sprint(getReplicaSetListQuery)
+	j := fmt.Sprintf("{\"query\": \"%s\"}", req)
+	rawResp, err := http.Post(s.serviceHost, "application/json", strings.NewReader(j))
+	if err != nil {
+		return resp, err
+	}
+
+	defer rawResp.Body.Close()
+
+	if err := json.NewDecoder(rawResp.Body).Decode(&resp); err != nil {
 		return resp, err
 	}
 

@@ -334,7 +334,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 				reqLogger.Error(err, "Join error")
 
-				if strings.Contains(err.Error(), "no route to host") {
+				if strings.Contains(err.Error(), "no route to host") || strings.Contains(err.Error(), "Timeout exceeded while awaiting headers") {
 					reqLogger.Info("no route to leader, IP of the pod could have changed, re-elect leader")
 					delete(ep.Annotations, "tarantool.io/leader")
 

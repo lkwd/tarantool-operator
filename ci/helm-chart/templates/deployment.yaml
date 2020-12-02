@@ -1,16 +1,15 @@
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ .Values.namespace }}
-  annotations:
-    helm.sh/resource-policy: keep
+# ---
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: {{ .Values.namespace }}
+#   annotations:
+#     helm.sh/resource-policy: keep
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tarantool-operator
-  namespace: {{ .Values.namespace }}
 spec:
   replicas: 1
   selector:
@@ -31,7 +30,6 @@ spec:
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           command:
             - tarantool-operator
-          imagePullPolicy: IfNotPresent
           env:
             - name: WATCH_NAMESPACE
               valueFrom:

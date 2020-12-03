@@ -3,7 +3,6 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tarantool-operator
-  namespace: {{ .Values.namespace }}
 subjects:
 - kind: ServiceAccount
   name: tarantool-operator

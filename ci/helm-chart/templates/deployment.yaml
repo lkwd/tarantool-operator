@@ -3,6 +3,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Values.namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
 ---
 apiVersion: apps/v1
 kind: Deployment

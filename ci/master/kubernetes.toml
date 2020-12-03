@@ -3,5 +3,6 @@
     tobuild = [
         # 'tarantool-operator',
         # 'presence-operator',
-        'userlog-operator',
+        # 'userlog-operator',
+        'reporting-operator',
     ]

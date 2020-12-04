@@ -1,8 +1,8 @@
 [service]
 dockerfile = 'build/Dockerfile'
 docker_build_dir = '.'
-eks_cluster = 'eks-staging'
-namespace = 'chat'
+eks_cluster = 'eks-prod'
+namespace = 'reporting'
 app_name = 'tarantool-operator'
 
 regions = [

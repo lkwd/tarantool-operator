@@ -1,8 +1,9 @@
 
 [packages]
     tobuild = [
-        'chat-operator',
+        #'chat-operator',
         # 'presence-operator',
         # 'tarantool-operator',
         # 'userlog-operator',
+        'reporting-operator',
     ]

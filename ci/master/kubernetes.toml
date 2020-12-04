@@ -5,4 +5,5 @@
         'presence-operator',
         'userlog-operator',
         'reporting-operator',
+        'chat-operator'
     ]

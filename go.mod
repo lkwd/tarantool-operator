@@ -24,7 +24,7 @@ replace (
 
 	// autoneg is a dependency of early versions of operator-sdk (pre v1.0).
 	// it is no longer hosted on bitbucket.org, so the files are checked in locally and replaced here.
-	bitbucket.org/ww/goautoneg => ./vendor/bitbucket.org/ww/autoneg
+	bitbucket.org/ww/goautoneg => ./ext/bitbucket.org/ww/autoneg
 	k8s.io/api => k8s.io/api v0.0.0-20181213150558-05914d821849
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20181213153335-0fe22c71c476
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20181127025237-2b1284ed4c93

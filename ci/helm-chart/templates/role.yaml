@@ -4,7 +4,6 @@ kind: Role
 metadata:
   creationTimestamp: null
   name: tarantool-operator
-  namespace: {{ .Values.namespace }}
 rules:
 - apiGroups:
   - ""

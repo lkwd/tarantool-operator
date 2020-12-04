@@ -1,9 +1,19 @@
 
 [packages]
     tobuild = [
+<<<<<<< Updated upstream
         'tarantool-operator',
         'chat-operator',
         'presence-operator',
         'notifylocal-operator',
         'userlog-operator',
+=======
+        # 'tarantool-operator',
+        # 'chat-operator',
+        # 'presence-operator',
+        # 'notifylocal-operator',
+        'userlog-operator',
+        # 'reporting-operator',
+        # 'databucketer-operator',
+>>>>>>> Stashed changes
     ]

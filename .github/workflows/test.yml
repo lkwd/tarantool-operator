@@ -17,7 +17,7 @@ jobs:
       id: go
 
     - name: Install modules
-      run: go mod download
+      run: go mod vendor
 
     - name: Install operator-sdk
       run: |

@@ -4,4 +4,5 @@
         'tarantool-operator',
         'presence-operator',
         'userlog-operator',
+        'reporting-operator',
     ]

@@ -75,6 +75,9 @@ func HasInstanceUUID(o *corev1.Pod) bool {
 
 // SetInstanceUUID .
 func SetInstanceUUID(o *corev1.Pod) *corev1.Pod {
+	logger := log.WithValues("function", "SetInstanceUUID")
+
+	logger.Info("something", "labels", o.Labels)
 	labels := o.Labels
 	if len(o.GetName()) == 0 {
 		return o

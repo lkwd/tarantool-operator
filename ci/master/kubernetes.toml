@@ -5,5 +5,6 @@
         'presence-operator',
         'userlog-operator',
         'reporting-operator',
-        'chat-operator'
+        'chat-operator',
+        'databucketer-operator',
     ]

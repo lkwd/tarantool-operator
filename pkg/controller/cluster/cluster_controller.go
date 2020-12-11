@@ -86,18 +86,6 @@ func SetInstanceUUID(o *corev1.Pod) *corev1.Pod {
 	return o
 }
 
-// GetLeaderURI gets the URI to be used as the cluster leader
-func GetLeaderURI(cluster *tarantoolv1alpha1.Cluster, endpoint *corev1.Endpoints) string {
-	logger := log.WithValues("func", "GetLeaderURI", "Request.Namespace", cluster.GetNamespace())
-
-	target := endpoint.Subsets[0].Addresses[0].TargetRef
-	ret := fmt.Sprintf("%s.%s.%s.svc.cluster.local:8081", target.Name, cluster.GetName(), cluster.GetNamespace())
-
-	logger.Info("Setting leader URI", "URI", ret)
-
-	return ret
-}
-
 // Add creates a new Cluster Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -259,7 +247,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			// return reconcile.Result{RequeueAfter: time.Duration(5000 * time.Millisecond)}, nil
 		}
 
-		leader = GetLeaderURI(cluster, ep)
+		leader = fmt.Sprintf("%s:%s", ep.Subsets[0].Addresses[0].IP, "8081")
 
 		if ep.Annotations == nil {
 			ep.Annotations = make(map[string]string)

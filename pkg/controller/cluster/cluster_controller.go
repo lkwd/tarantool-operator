@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -88,7 +87,7 @@ func SetInstanceUUID(o *corev1.Pod) *corev1.Pod {
 }
 
 // GetLeaderURI gets the URI to be used as the cluster leader
-func GetLeaderURI(cluster *tarantoolv1alpha1.Cluster, endpoint *corev1.Endpoints) (string, error) {
+func GetLeaderURI(cluster *tarantoolv1alpha1.Cluster, endpoint *corev1.Endpoints) string {
 	logger := log.WithValues("func", "GetLeaderURI", "Request.Namespace", cluster.GetNamespace())
 
 	target := endpoint.Subsets[0].Addresses[0].TargetRef
@@ -96,13 +95,7 @@ func GetLeaderURI(cluster *tarantoolv1alpha1.Cluster, endpoint *corev1.Endpoints
 
 	logger.Info("Setting leader URI", "URI", ret)
 
-	_, err := http.Get(fmt.Sprintf("http://%s", ret))
-	if err != nil {
-		logger.Error(err, "failed testing endpoint connectivity")
-		return "", err
-	}
-
-	return ret, nil
+	return ret
 }
 
 // Add creates a new Cluster Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -266,10 +259,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			// return reconcile.Result{RequeueAfter: time.Duration(5000 * time.Millisecond)}, nil
 		}
 
-		leader, err := GetLeaderURI(cluster, ep)
-		if err != nil {
-			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
-		}
+		leader = GetLeaderURI(cluster, ep)
 
 		if ep.Annotations == nil {
 			ep.Annotations = make(map[string]string)

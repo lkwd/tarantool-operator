@@ -2,8 +2,17 @@
 dockerfile = 'build/Dockerfile'
 docker_build_dir = '.'
 eks_cluster = 'eks-dev'
-namespace = 'userscripting'
 app_name = 'tarantool-operator'
+
+namespaces = [
+    'chat',
+    'databucketer',
+    'notifylocal',
+    'presence',
+    'reporting',
+    'userscripting',
+    'userlog',
+]
 
 regions = [
     'eu-west-1',

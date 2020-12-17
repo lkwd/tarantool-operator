@@ -3,3 +3,5 @@
     tobuild = [
         'tarantool-operator',
     ]
+
+    send_slack_message = true

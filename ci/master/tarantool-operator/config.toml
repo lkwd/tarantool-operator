@@ -2,8 +2,15 @@
 dockerfile = 'build/Dockerfile'
 docker_build_dir = '.'
 eks_cluster = 'eks-prod'
-namespace = 'userscripting'
 app_name = 'tarantool-operator'
+
+namespaces = [
+    'chat',
+    'presence',
+    'reporting',
+    'userlog',
+    'userscripting',
+]
 
 regions = [
     'eu-west-1',
@@ -11,3 +18,9 @@ regions = [
 
 deployment.type = 'helm'
 deployment.helm_chart = './ci/helm-chart'
+
+deployment.extra_helm_opts = [
+    # namespaces are created implicitly, pass this arg to ensure they are
+    #  created on new deployments
+    '--create-namespace',
+]

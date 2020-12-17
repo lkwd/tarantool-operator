@@ -20,3 +20,9 @@ regions = [
 
 deployment.type = 'helm'
 deployment.helm_chart = './ci/helm-chart'
+
+deployment.extra_helm_opts = [
+    # namespaces are created implicitly, pass this arg to ensure they are
+    #  created on new deployments
+    '--create-namespace',
+]
